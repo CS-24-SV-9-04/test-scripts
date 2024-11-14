@@ -16,7 +16,7 @@ do
     line="\n###### RUNNING $SLURM_JOB_NAME X $QUERY_INDEX ######"
     echo -e "$line"
     echo -e "$line" >&2
-    timeout 60 ./verifypn-linux64 -C -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH
+    time timeout 60 ./verifypn-linux64 -C -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH
     EXECUTION_RESULT=$?
     if [ $EXECUTION_RESULT = 124 ]; then
         echo "TIMEOUT"
