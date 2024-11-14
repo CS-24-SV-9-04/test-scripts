@@ -3,7 +3,7 @@ import re
 
 
 QUERY_SATISFIED = "Query is satisfied"
-QUERY_UNSATISIFED = "Query is NOT satisfied"
+QUERY_UNSATISFIED = "Query is NOT satisfied"
 QUERY_TIMEOUT = "TIMEOUT"
 
 outputFiles = list(filter(lambda path : path.suffix == ".out", Path("./out/").iterdir()))
@@ -12,11 +12,12 @@ resultFile = open("results.csv", "w")
 resultFile.write("Net,Category,Index,Result,Time\n")
 for outputPath in outputFiles:
     content = outputPath.read_text()
-    matches = re.finditer("#{6}\\s+RUNNING\\s+([^_]+)_([^#\\.]+)\\.xml\\s+#{6}([^#]+)", content)
+    matches = re.finditer("#{6}\\s+RUNNING\\s+([^_]+)_([^\\.]+)\\.xml\\s+X\\s+([0-9]+)\\s+#{6}([^#]+)", content)
     for match in matches:
         name = match.group(1)
         category = match.group(2)
-        outContent = match.group(3)
+        query_index = match.group(3)
+        outContent = match.group(4)
         time = "unknown"
         timeMatch = re.search("real\\s*([0-9]+m[0-9]+\\.[0-9]+s)", outContent)
         if (timeMatch != None):
@@ -24,15 +25,14 @@ for outputPath in outputFiles:
         status = ""
         if (QUERY_SATISFIED in outContent):
             status = "satisfied"
-        elif (QUERY_UNSATISIFED in outContent):
+        elif (QUERY_UNSATISFIED in outContent):
             status = "unsatisfied"
         elif (QUERY_TIMEOUT in outContent):
             status = "timeout"
             time = "n/a"
         else:
             status = "error"
-        query_index = re.search("-x ([0-9]+)", outContent)
-        resultFile.write(f"{name},{category},{query_index.group(1)},{status},{time}\n")
+        resultFile.write(f"{name},{category},{query_index},{status},{time}\n")
         
         
 resultFile.close()
