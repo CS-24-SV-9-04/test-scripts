@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --mail-type=ALL  # Type of email notification: BEGIN,END,FAIL,ALL
+#SBATCH --mail-type=END,FAIL  # Type of email notification: BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=jhajri20@student.aau.dk
 #SBATCH --output=/nfs/home/student.aau.dk/jhajri20/slurm-output/test/%x-%j.out  # Redirect the output stream to this file (%A_%a is the job's array-id and index)
 #SBATCH --error=/nfs/home/student.aau.dk/jhajri20/slurm-output/test/%x-%j.err   # Redirect the error stream to this file (%A_%a is the job's array-id and index)
@@ -16,7 +16,7 @@ do
     line="\n###### RUNNING $SLURM_JOB_NAME X $QUERY_INDEX ######"
     echo -e "$line"
     echo -e "$line" >&2
-    time timeout 60 ./verifypn-linux64 -C -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH
+    /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 60 /nfs/home/student.aau.dk/jhajri20/verifypn-linux64 -s $STRATEGY -C -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH
     EXECUTION_RESULT=$?
     if [ $EXECUTION_RESULT = 124 ]; then
         echo "TIMEOUT"

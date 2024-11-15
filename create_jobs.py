@@ -8,10 +8,12 @@ import os
 parser = ArgumentParser(prog="colored petri net slurm job starter")
 parser.add_argument('-m', '--models', help="Path to directory containing the mcc models", default='/usr/local/share/mcc/')
 parser.add_argument('-s', '--sbatch-script', help="Path to the sbatch script that is started", default='./sbatch_script.sh')
+parser.add_argument('-S', '--strategy', help="The search strategy to be used", default='RDFS')
 args = parser.parse_args()
 
 MODELS_PATH = args.models
 SBATCH_SCRIPT = args.sbatch_script
+STRATEGY = args.strategy
 
 class QueryFile:
     def __init__(self, queryPath):
@@ -54,7 +56,8 @@ def scheduleJob(job: ModelCheckingJob):
     my_env["MODEL_FILE_PATH"] = os.path.abspath(job.model.modelPath)
     my_env["QUERY_FILE_PATH"] = os.path.abspath(job.queryFile.queryPath)
     my_env["QUERY_COUNT"] = str(job.queryFile.queryCount)
-    subprocess.call(["./fake_sbatch.sh", "--job-name", f"{job.model.name()}_{job.queryFile.name()}", SBATCH_SCRIPT], env=my_env)
+    my_env['STRATEGY'] = str(STRATEGY)
+    subprocess.call(["sbatch", "--job-name", f"{job.model.name()}_{job.queryFile.name()}_{STRATEGY}", SBATCH_SCRIPT], env=my_env)
 
 modelCheckingJobs: List[ModelCheckingJob] = []
 print("creating jobs list")

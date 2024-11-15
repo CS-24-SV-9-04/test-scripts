@@ -1,14 +1,14 @@
 import asyncio
+import multiprocessing
 import os
 from pathlib import Path
 
-exit()
 current_job = 0
 scripts = list(Path("./jobs/").iterdir())
 nextjob = 0
 
 async def async_main():
-    await asyncio.gather(*[async_thread(i) for i in range(0, 20)])
+    await asyncio.gather(*[async_thread(i) for i in range(0, multiprocessing.cpu_count())])
 
 async def async_thread(threadId: int):
     global nextjob
