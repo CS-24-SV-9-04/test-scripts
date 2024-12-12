@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 import re
+from typing import List, Optional
 
 parser = ArgumentParser(prog="Generates CSV report from the output of model checking jobs")
 parser.add_argument("strategy")
@@ -13,6 +14,12 @@ QUERY_UNSATISFIED = "Query is NOT satisfied"
 QUERY_TIMEOUT = "TIMEOUT"
 OUT_OF_MEMORY = "std::bad_alloc"
 TOO_MANY_BINDINGS = "TOO_MANY_BINDINGS"
+
+class Metric:
+    def __init__(self, name: str, time: Optional[float]):
+        self.name = name
+        self.time = time
+metrics: List[Metric] = []
 
 outputFiles = list(Path("./out/").glob(f"*_{STRATEGY}*.out"))
 outputFiles.sort(key = lambda a : str(a).lower())
@@ -56,6 +63,20 @@ for outputPath in outputFiles:
         else:
             status = "error"
         resultFile.write(f"{name},{category},{query_index},{status},{time},{maxMemory}\n")
-        
-        
+        if (time != "unknown" and time != "n/a"):
+            metrics.append(Metric(name, float(time)))
+        else:
+            metrics.append(Metric(name, None))
+
 resultFile.close()
+
+cactusData = sorted(filter(lambda k: k.time != None, metrics), key = lambda m: m.time)
+
+# Create cactus plot
+cactusPlotOut = open("cactus.plot", "w")
+cactusPlotOut.write("counter\ttime\n")
+counter = 0
+for point in cactusData:
+    cactusPlotOut.write(f"{counter}\t{point.time}\n")
+    counter += 1
+cactusPlotOut.close()

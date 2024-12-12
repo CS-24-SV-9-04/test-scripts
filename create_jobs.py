@@ -4,22 +4,24 @@ from typing import List
 from argparse import ArgumentParser
 import subprocess
 import os
+import time
 
 parser = ArgumentParser(prog="colored petri net slurm job starter")
 parser.add_argument('-m', '--models', help="Path to directory containing the mcc models", default='/usr/local/share/mcc/')
 parser.add_argument('-s', '--sbatch-script', help="Path to the sbatch script that is started", default='./sbatch_script.sh')
 parser.add_argument('-S', '--strategy', help="The search strategy to be used", default='RDFS')
+parser.add_argument('-g', '--go', help="Schedule the jobs instead of just printing them", action='store_true')
 args = parser.parse_args()
 
 MODELS_PATH = args.models
 SBATCH_SCRIPT = args.sbatch_script
 STRATEGY = args.strategy
+GO = args.go
 
 class QueryFile:
     def __init__(self, queryPath):
         self.queryPath = queryPath
-        with open(queryPath, 'r') as content_file:
-            self.queryCount = content_file.read().count("<property>")
+        self.queryCount = 16
     def name(self):
         return self.queryPath.name
 
@@ -38,7 +40,7 @@ models: List[Model] = []
 print("finding models")
 for modelRoot in Path(MODELS_PATH).iterdir():
     modelPnml = modelRoot / "model.pnml"
-    queryFiles = [QueryFile(x) for x in modelRoot.glob('ReachabilityCardinality.xml')]
+    queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml'), QueryFile(modelRoot / 'ReachabilityFireability.xml')]
     models.append(Model(modelRoot, modelPnml, queryFiles))
 
 print(f"Found {models.__len__()} models")
@@ -68,10 +70,14 @@ for model in models:
 print(f"found {len(modelCheckingJobs)} jobs")
 totalQueries = 0
 for modelCheckingJob in modelCheckingJobs:
-    for queryFile in model.queryFiles:
-        totalQueries += modelCheckingJob.queryFile.queryCount
-print(f"requires an estimated {totalQueries} minutes of cpu time")
+    totalQueries += modelCheckingJob.queryFile.queryCount
 
-i = 0
+print(f"requires an estimated {totalQueries} minutes of cpu time")
+time.sleep(5)
+print("Scheduling jobs, press enter to start")
+input()
 for modelCheckingJob in modelCheckingJobs:
-    scheduleJob(modelCheckingJob)
+    time.sleep(1)
+    print(modelCheckingJob)
+    if (GO):
+        scheduleJob(modelCheckingJob)
