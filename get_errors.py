@@ -1,6 +1,6 @@
+#!/usr/bin/python3
 from os import mkdir
 from argparse import ArgumentParser
-from io import TextIOWrapper
 import sqlite3
 from typing import List
 

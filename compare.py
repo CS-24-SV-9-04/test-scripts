@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from argparse import ArgumentParser
 from io import TextIOWrapper
 import sqlite3
