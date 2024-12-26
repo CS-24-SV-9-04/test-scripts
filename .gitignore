@@ -3,3 +3,7 @@ jobs/
 verifypn-linux64
 out.
 results.csv
+many_results/
+__pycache__
+many_out/
+compared/

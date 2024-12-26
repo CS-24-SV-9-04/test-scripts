@@ -40,7 +40,7 @@ models: List[Model] = []
 print("finding models")
 for modelRoot in Path(MODELS_PATH).iterdir():
     modelPnml = modelRoot / "model.pnml"
-    queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml'), QueryFile(modelRoot / 'ReachabilityFireability.xml')]
+    queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml'), QueryFile(modelRoot / "ReachabilityFireability.xml")]
     models.append(Model(modelRoot, modelPnml, queryFiles))
 
 print(f"Found {models.__len__()} models")
@@ -81,3 +81,5 @@ for modelCheckingJob in modelCheckingJobs:
     print(modelCheckingJob)
     if (GO):
         scheduleJob(modelCheckingJob)
+
+print("\a")
