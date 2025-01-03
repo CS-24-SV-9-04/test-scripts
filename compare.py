@@ -96,11 +96,26 @@ error_cur = con.execute(
 
 error_a, error_b = error_cur.fetchone()
 
+total_cur = con.execute(
+        """
+        SELECT 
+            COUNT(*) FILTER (WHERE lower(l.status) == "answered"),
+            COUNT(*) FILTER (WHERE lower(r.status) == "answered")
+        FROM query_result l
+        LEFT JOIN query_result r On r.query_instance_id = l.query_instance_id
+        LEFT JOIN query_instance qi ON qi.id == l.query_instance_id
+        WHERE l.experiment_id = ? and r.experiment_id = ?
+    """, (aId, bId))
+
+total_a, total_b = total_cur.fetchone()
+
 resultsFile = open("compared/results.txt", "w")
 
+resultsFile.write(f"total for {EXPERIMENT_A}: {total_a}\n")
 resultsFile.write(f"unique for {EXPERIMENT_A}: {unique_a}\n")
 resultsFile.write(f"error for {EXPERIMENT_A}: {error_a}\n")
 resultsFile.write(f"\n")
+resultsFile.write(f"total for {EXPERIMENT_B}: {total_b}\n")
 resultsFile.write(f"unique for {EXPERIMENT_B}: {unique_b}\n")
 resultsFile.write(f"error for {EXPERIMENT_B}: {error_b}\n")
 

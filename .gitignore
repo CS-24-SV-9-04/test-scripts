@@ -8,3 +8,4 @@ __pycache__
 many_out/
 compared/
 data.db
+errors/

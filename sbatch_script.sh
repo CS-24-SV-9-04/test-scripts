@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --mail-type=FAIL  # Type of email notification: BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=jhajri20@student.aau.dk
-#SBATCH --output=/nfs/home/student.aau.dk/jhajri20/slurm-output/rc/%x-%j.out  # Redirect the output stream to this file (%A_%a is the job's array-id and index)
-#SBATCH --error=/nfs/home/student.aau.dk/jhajri20/slurm-output/rc/%x-%j.err   # Redirect the error stream to this file (%A_%a is the job's array-id and index)
+#SBATCH --output=/nfs/home/student.aau.dk/jhajri20/slurm-output/80817dd/%x-%j.out  # Redirect the output stream to this file (%A_%a is the job's array-id and index)
+#SBATCH --error=/nfs/home/student.aau.dk/jhajri20/slurm-output/80817dd/%x-%j.err   # Redirect the error stream to this file (%A_%a is the job's array-id and index)
 #SBATCH --partition=naples  # If you need run-times to be consistent across tests, you may need to restrict to one partition.
 #SBATCH --mem=16G  # Memory limit that slurm allocates
 #SBATCH --time=0:17:00
