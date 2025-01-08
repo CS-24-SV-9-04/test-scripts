@@ -46,11 +46,11 @@ def writeTable(out: TextIOWrapper, solveStats: List[tuple[str, SolveStats, Solve
     out.write("\n\\cline{2-6}\n")
     out.write(r"& \multicolumn{2}{c}{Reduction} && \multicolumn{2}{c}{No reduction}\\")
     out.write("\n\\cline{2-3}\\cline{5-6}\n")
-    out.write(r"& Fireability & Cardinality && Fireability & Cardinality\\")
+    out.write(r"& Cardinality & Fireability && Cardinality & Fireability\\")
     out.write("\n\\midrule\n")
     for solveStat in solveStats:
         name, reductionStat, noreductionStat = solveStat
-        out.write(f"{name}&{reductionStat.cardinality}&{reductionStat.fireability}&&{noreductionStat.cardinality}&{reductionStat.fireability}\\\\\n")
+        out.write(f"{name}&{reductionStat.cardinality}&{reductionStat.fireability}&&{noreductionStat.cardinality}&{noreductionStat.fireability}\\\\\n")
     out.write("\\bottomrule\n")
     out.write("\\end{tabularx}")
 

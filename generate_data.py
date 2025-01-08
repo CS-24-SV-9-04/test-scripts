@@ -68,7 +68,7 @@ def process_results(resultFilesPath: str) -> Dict[str, StrategyResults]:
                                 for result in results:
                                     name = createName(resultFilePath, result.strategy)
                                     if name not in resultDict:
-                                        resultDict[name] = StrategyResults(resultFilePath.name, result.strategy, dict())
+                                        resultDict[name] = StrategyResults(resultFilePath.name.split(".")[0], result.strategy, dict())
                                     resultDict[name].results[result.query_instance.get_key()] = (result)
                     except KeyError:
                         print("missing err file for " + memberInfo.path)

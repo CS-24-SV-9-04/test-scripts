@@ -7,7 +7,7 @@ class Experiment:
         self.strategy = strategy
         if self.strategy.lower() == "default":
             self.type = "baseline"
-        elif "e" in self.strategy.lower():
+        elif self.strategy.lower().startswith("e"):
             self.type = "even"
         else:
             self.type = "fixed"
@@ -21,11 +21,17 @@ class Experiment:
     
     def getFullStrategyName(self) -> str:
         if (self.type == "even"):
-            return f"EVEN-{self.strategy}"
+            return f"EVEN-{self.getStrategyWithoutSuccessorGen()}"
         elif (self.type == "fixed"):
-            return f"FIX-{self.strategy}"
+            return f"FIX-{self.getStrategyWithoutSuccessorGen()}"
         else:
             return "baseline"
+    def getStrategyWithoutSuccessorGen(self) -> str:
+        if (self.strategy.lower() == "bestfs"):
+            return "HEUR"
+        elif (self.strategy.lower().startswith("e")):
+            return self.strategy[1:]
+        return self.strategy
 
 def getExperimentId(con: sqlite3.Connection, experiment: Experiment):
     res = con.execute("SELECT id FROM experiment WHERE name=? AND search_strategy=?", (experiment.name, experiment.strategy))

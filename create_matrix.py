@@ -13,7 +13,7 @@ parser = ArgumentParser(prog="Generates comparison between two experiments based
 parser.add_argument("experiments", nargs='+', help="all experiments included in the matrix in <name>-<strategy> format")
 args = parser.parse_args()
 
-experiments = [Experiment.fromFormat(x) for x in args.experiments]
+experiments: List[Experiment] = [Experiment.fromFormat(x) for x in args.experiments]
 print(experiments)
 
 con = sqlite3.connect("data.db")
@@ -51,7 +51,7 @@ def print_matrix(out: TextIOWrapper, matrix: List[List[int]]):
     evens = list(filter(lambda x: experiments[x].type == "even", range(len(experiments))))
     fixeds = list(filter(lambda x: experiments[x].type == "fixed", range(len(experiments))))
     baseline = next(filter(lambda x: experiments[x].type == "baseline", range(len(experiments))))
-    sortedIndices = list(chain(chain(evens, fixeds), [baseline]))
+    sortedIndices = list(chain(chain(fixeds, evens), [baseline]))
     print(evens)
     print(fixeds)
     print(baseline)
@@ -81,7 +81,7 @@ def print_matrix(out: TextIOWrapper, matrix: List[List[int]]):
     out.write(r"\multicolumn{2}{|c|}{}")
     for index in sortedIndices:
         if (experiments[index].type != "baseline"):
-            out.write(f" & {experiments[index].strategy}")
+            out.write(f" & {experiments[index].getStrategyWithoutSuccessorGen()}")
         else:
             out.write(" & ")
     out.write(r"\\")
@@ -93,7 +93,7 @@ def print_matrix(out: TextIOWrapper, matrix: List[List[int]]):
         out.write(str(len(fixeds)))
         out.write(r"}{*}{\rotatebox[origin=c]{90}{FIX}}")
     for aIndex in fixeds:
-        out.write(f"& {experiments[aIndex].strategy} ")
+        out.write(f"& {experiments[aIndex].getStrategyWithoutSuccessorGen()} ")
         for bIndex in sortedIndices:
             out.write(f"& {matrix[aIndex][bIndex]}")
         out.write(r"\\")
@@ -101,8 +101,12 @@ def print_matrix(out: TextIOWrapper, matrix: List[List[int]]):
         out.write(f"\\cline{{3-{2 + len(sortedIndices)}}}\n")
     if (len(fixeds) > 0):
         out.write("\\hline\n")
+    if (len(evens) > 0):
+        out.write(r"\multirow{")
+        out.write(str(len(fixeds)))
+        out.write(r"}{*}{\rotatebox[origin=c]{90}{EVEN}}")
     for aIndex in evens:
-        out.write(f"& {experiments[aIndex].strategy} ")
+        out.write(f"& {experiments[aIndex].getStrategyWithoutSuccessorGen()} ")
         for bIndex in sortedIndices:
             out.write(f"& {matrix[aIndex][bIndex]}")
         out.write(r"\\")

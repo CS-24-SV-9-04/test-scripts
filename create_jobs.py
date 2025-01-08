@@ -77,7 +77,7 @@ time.sleep(5)
 print("Scheduling jobs, press enter to start")
 input()
 for modelCheckingJob in modelCheckingJobs:
-    time.sleep(1)
+    time.sleep(0.2)
     print(modelCheckingJob)
     if (GO):
         scheduleJob(modelCheckingJob)

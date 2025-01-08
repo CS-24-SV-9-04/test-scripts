@@ -78,13 +78,10 @@ class Result:
             result = QueryResult.Unsatisfied
         elif (QUERY_TIMEOUT in outResult):
             status = Status.Timeout
-            time = None
         elif (TOO_MANY_BINDINGS in outResult):
             status = Status.TooManyBindings
-            time = None
         elif (OUT_OF_MEMORY in errResult):
             status = Status.OutOfMemory
-            time = None
         else:
             status = Status.Error
         
