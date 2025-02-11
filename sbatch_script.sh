@@ -1,8 +1,6 @@
 #!/bin/bash
 #SBATCH --mail-type=FAIL  # Type of email notification: BEGIN,END,FAIL,ALL
 #SBATCH --mail-user=jhajri20@student.aau.dk
-#SBATCH --output=/nfs/home/student.aau.dk/jhajri20/slurm-output/final-r0.p2/%x-%j.out  # Redirect the output stream to this file (%A_%a is the job's array-id and index)
-#SBATCH --error=/nfs/home/student.aau.dk/jhajri20/slurm-output/final-r0.p2/%x-%j.err   # Redirect the error stream to this file (%A_%a is the job's array-id and index)
 #SBATCH --partition=naples  # If you need run-times to be consistent across tests, you may need to restrict to one partition.
 #SBATCH --mem=16G  # Memory limit that slurm allocates
 #SBATCH --time=1:25:00
@@ -16,7 +14,7 @@ do
     line="\n###### RUNNING $SLURM_JOB_NAME X $QUERY_INDEX ######"
     echo -e "$line"
     echo -e "$line" >&2
-    /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 300 /nfs/home/student.aau.dk/jhajri20/verifypn-linux64 -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH -C -s $STRATEGY
+    /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 300 /nfs/home/student.aau.dk/jhajri20/verifypn-linux64 -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $VERIFYPN_OPTIONS
     EXECUTION_RESULT=$?
     if [ $EXECUTION_RESULT = 124 ]; then
         echo "TIMEOUT"

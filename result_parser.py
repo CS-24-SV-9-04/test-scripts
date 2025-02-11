@@ -35,7 +35,7 @@ class QueryInstance:
 pattern = r"#{6}\s+RUNNING\s+([^_]+)_([^\.]+)\.xml_([A-Za-z]+)\s+X\s+([0-9]+)\s+#{6}([^#]+)"
 
 class Result:
-    def __init__(self, query_instance: QueryInstance, time: Optional[float], status: Status, result: Optional[QueryResult], maxMemory: Optional[float], states: Optional[int], strategy: str, fullOut: str, fullErr: str):
+    def __init__(self, query_instance: QueryInstance, time: Optional[float], status: Status, result: Optional[QueryResult], maxMemory: Optional[float], states: Optional[int], strategy: str, colorReductionTime: Optional[float], verificationTime: Optional[float], fullOut: str, fullErr: str):
         self.query_instance = query_instance
         self.time = time
         self.status = status
@@ -45,6 +45,8 @@ class Result:
         self.strategy = strategy
         self.fullOut = fullOut
         self.fullErr = fullErr
+        self.colorReductionTime = colorReductionTime
+        self.verificationTime = verificationTime
 
     @staticmethod
     def fromOutErr(out: str, err: str) -> Iterable[Self]:
@@ -62,14 +64,28 @@ class Result:
         errResult = errMatch.group(5)
         timeMatch = re.search(r"TOTAL_TIME: ([0-9]+(\.[0-9]+)?)s", errResult)
         memoryMatch = re.search("MAX_MEMORY: ([0-9]+)kB", errResult)
+        passedListMatch = re.search(r"(?:explored|discovered) states: ([0-9]+)", outResult)
+        verificationTimeMatch = re.search(r"Spent ([0-9]+(\.[0-9]+)?) on verification", outResult)
+        colorReductionTimeMatch = re.search(r"Colored structural reductions computed in ([0-9]+(\.[0-9]+)?(e(\+|\-)[0-9]+)?) seconds", outResult)
         time = None
         status = Status.Error
         maxMemory = None
         result = None
+        colorReductionTime = None
+        verificationTime = None
+        exploredCount = None
+        if (verificationTimeMatch is not None):
+            verificationTime = float(verificationTimeMatch.group(1))
         if (timeMatch != None):
             time = float(timeMatch.group(1))
         if (memoryMatch != None):
             maxMemory = float(memoryMatch.group(1))
+        if (colorReductionTimeMatch != None):
+            colorReductionTime = float(colorReductionTimeMatch.group(1))
+        if (passedListMatch is not None):
+            exploredCount = float(passedListMatch.group(1))
+        if (verificationTime is None and exploredCount is not None):
+            verificationTime = time - (colorReductionTime if colorReductionTime is not None else 0)
         if (QUERY_SATISFIED in outResult):
             status = Status.Answered
             result = QueryResult.Satisfied
@@ -85,6 +101,6 @@ class Result:
         else:
             status = Status.Error
         
-        return Result(QueryInstance(name, category, query_index), time, status, result, maxMemory, None, strategy, outMatch.group(5), errMatch.group(5))
+        return Result(QueryInstance(name, category, query_index), time, status, result, maxMemory, exploredCount, strategy, colorReductionTime, verificationTime, outMatch.group(5), errMatch.group(5))
         
 

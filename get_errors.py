@@ -4,22 +4,19 @@ from argparse import ArgumentParser
 import sqlite3
 from typing import List
 
+from analysis_helper import Experiment, getExperimentId
+
 
 parser = ArgumentParser(prog="Gathers all stderr and stdout for errors in given strategy")
 parser.add_argument("experiment", help="Name of experiment in the format <name>-<strategy>")
 args = parser.parse_args()
-EXPERIMENT = args.experiment
+EXPERIMENT = Experiment.fromFormat(args.experiment)
 try:
     mkdir("errors")
 except FileExistsError:
     pass
 
 con = sqlite3.connect("data.db")
-
-def getExperimentId(con: sqlite3.Connection, nameAndStrategy: str):
-    name, strategy = nameAndStrategy.split("-")
-    res = con.execute("SELECT id FROM experiment WHERE name=? AND search_strategy=?", (name, strategy))
-    return res.fetchone()[0]
 
 experimentId = getExperimentId(con, EXPERIMENT)
 
