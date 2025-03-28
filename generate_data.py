@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from argparse import ArgumentParser
 from contextlib import closing
 from io import TextIOWrapper
 from os import remove
@@ -6,17 +7,28 @@ from pathlib import Path
 import tarfile
 from typing import Dict, List, Optional, Tuple
 import sqlite3
-from result_parser import QueryInstance, Result, Status
+from result_parser import QueryInstance, QueryResult, Result, Status
 import xml.etree.ElementTree as ET
 import re
+import json
+import typing
+
+parser = ArgumentParser(prog="Generates a database with the data from many_results")
+parser.add_argument("timeout", help="Sets a virtual timeout cut", default=100000, type=float)
+parsed = parser.parse_args()
+TIMEOUT = parsed.timeout
+
+
+expected_answers = json.load(open("expected_answers.json", "r"))
 
 def create_tables(con: sqlite3.Connection):
+    
     con.execute("""
     CREATE TABLE experiment (id INTEGER PRIMARY KEY, name, search_strategy);
     """)
 
     con.execute("""
-    CREATE TABLE query_instance (id INTEGER PRIMARY KEY, model_name, query_name, query_index, query_type)
+    CREATE TABLE query_instance (id INTEGER PRIMARY KEY, model_name, query_name, query_index, query_type, expected_answer)
     """)
 
     con.execute("""
@@ -65,9 +77,15 @@ def create_query_instances(con: sqlite3.Connection, path: str):
             parsed = ET.parse(str(queryFile))
             for queryElement in parsed.iterfind(".//{http://mcc.lip6.fr/}property"):
                 query_name, index, query_type = parse_query_and_type(queryElement)
+                expected_answer = None
+                if (modelDirectoryPath.name in expected_answers):
+                    c = expected_answers[modelDirectoryPath.name][query_name][index - 1]
+                    expected_answer = (QueryResult.Satisfied.name if c == 'T' else (QueryResult.Unsatisfied.name if c == 'F' else None))
+                else:
+                    print(f"no expected value for {modelDirectoryPath.name}")
                 con.execute("""
-                    INSERT INTO query_instance (model_name, query_name, query_index, query_type) VALUES (?, ?, ?, ?)
-                """, (modelDirectoryPath.name, query_name, index, query_type))
+                    INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
+                """, (modelDirectoryPath.name, query_name, index, query_type, expected_answer))
 
 class StrategyResults:
     def __init__(self, name: str, strategy: str, results: dict[str, Result]):
@@ -101,6 +119,15 @@ def process_results(resultFilesPath: str) -> Dict[str, StrategyResults]:
                         print("missing err file for " + memberInfo.path)
     return resultDict
 
+def processResult(result: Result):
+    if (result.time > TIMEOUT):
+        result.time = None
+        result.states = None
+        result.result = None
+        result.verificationTime = None
+        result.colorReductionTime = None
+        result.status = Status.Timeout
+
 
 def getQueryInstance(con: sqlite3.Connection, queryInstance: QueryInstance) -> int:
     res = con.execute("SELECT id FROM query_instance WHERE model_name=? AND query_name=? AND query_index=?",
@@ -116,6 +143,7 @@ def insertResults(con: sqlite3.Connection, resultsDict: Dict[str, StrategyResult
         experimentId = res.fetchone()[0]
         print(f"adding {strategy.name}-{strategy.strategy}")
         for result in strategy.results.values():
+            processResult(result)
             queryInstanceId = getQueryInstance(con, result.query_instance)
             res = cur.execute("INSERT INTO query_result (experiment_id, query_instance_id, time, status, result, max_memory, states, color_reduction_time, verification_time) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
                 (experimentId, queryInstanceId, result.time, result.status.name, result.result.name if result.result != None else None, result.maxMemory, result.states, result.colorReductionTime, result.verificationTime))

@@ -11,3 +11,5 @@ data.db
 errors/
 tables
 old_verifypn/
+all the answers.csv
+expected_answers.json

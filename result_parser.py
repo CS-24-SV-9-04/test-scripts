@@ -64,7 +64,7 @@ class Result:
         errResult = errMatch.group(5)
         timeMatch = re.search(r"TOTAL_TIME: ([0-9]+(\.[0-9]+)?)s", errResult)
         memoryMatch = re.search("MAX_MEMORY: ([0-9]+)kB", errResult)
-        passedListMatch = re.search(r"(?:explored|discovered) states: ([0-9]+)", outResult)
+        passedListMatch = re.search(r"passed states: ([0-9]+)", outResult)
         verificationTimeMatch = re.search(r"Spent ([0-9]+(\.[0-9]+)?) on verification", outResult)
         colorReductionTimeMatch = re.search(r"Colored structural reductions computed in ([0-9]+(\.[0-9]+)?(e(\+|\-)[0-9]+)?) seconds", outResult)
         time = None

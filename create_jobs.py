@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from pathlib import Path
+import sys
 from typing import List
 from argparse import ArgumentParser
 from pathlib import Path
@@ -17,7 +18,15 @@ parser.add_argument('-o', '--out-name', help="Name of the folder where output sh
 parser.add_argument('-w', '--wait-time', help="The wait time between starting jobs", default=0.2, type=float)
 parser.add_argument('-b', '--use-baseline', help="Disable the colored engine", action='store_true')
 parser.add_argument('--base-output-dir', help='Base path for output', default="/nfs/home/student.aau.dk/jhajri20/slurm-output/")
-args = parser.parse_args()
+only_args = sys.argv[1:]
+EXTRA_ARGS = []
+try:
+    index = only_args.index("--")
+    EXTRA_ARGS = only_args[index:][1:]
+    only_args = only_args[:index]
+except ValueError:
+    pass
+args = parser.parse_args(only_args)
 
 MODELS_PATH = args.models
 SBATCH_SCRIPT = args.sbatch_script
@@ -28,7 +37,6 @@ OUT_NAME = args.out_name
 WAIT_TIME = args.wait_time
 USE_BASELINE = args.use_baseline
 BASE_OUTPUT_DIR = args.base_output_dir
-
 slurm_output_path = Path(BASE_OUTPUT_DIR)
 OUTPUT_PATH = slurm_output_path / OUT_NAME
 
@@ -36,6 +44,8 @@ def validate_scg(scg: str):
     if scg == "fixed":
         return
     elif scg == "even":
+        return
+    elif scg == "random":
         return
     elif scg is None:
         return
@@ -116,7 +126,7 @@ class ModelCheckingJob:
 
 def startSbatchJob(env: dict[str,str], script_path: str, job_name: str, output_path: Path):
     process_invocation([
-        "./fake_sbatch.sh",
+        "sbatch",
         "--job-name",
         job_name,
         "--output",
@@ -142,8 +152,10 @@ def scheduleJob(job: ModelCheckingJob):
     if STRATEGY is not None:
         verifypn_options.append("-s")
         verifypn_options.append(STRATEGY)
+    verifypn_options = verifypn_options + EXTRA_ARGS
+
     my_env["VERIFYPN_OPTIONS"] = ' '.join(verifypn_options)
-    job_name =  f"{job.model.name()}_{job.queryFile.name()}_{"default" if STRATEGY is None else STRATEGY}"
+    job_name = f"{job.model.name()}_{job.queryFile.name()}_{'default' if STRATEGY is None else STRATEGY}"
     startSbatchJob(my_env, SBATCH_SCRIPT, job_name, OUTPUT_PATH)
 
 modelCheckingJobs: List[ModelCheckingJob] = []
@@ -159,6 +171,8 @@ for modelCheckingJob in modelCheckingJobs:
 
 if (GO):
     create_out_path(OUTPUT_PATH)
+else:
+    print(f"FAKE CREATE FOLDER {OUTPUT_PATH}")
 
 print(f"requires an estimated {totalQueries} minutes of cpu time")
 print("Scheduling jobs, press enter to start")
