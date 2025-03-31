@@ -13,3 +13,7 @@ tables
 old_verifypn/
 all the answers.csv
 expected_answers.json
+readme.md
+main.py
+.venv
+all_answers.csv
