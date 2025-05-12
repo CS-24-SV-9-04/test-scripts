@@ -2,16 +2,18 @@
 from argparse import ArgumentParser
 from contextlib import closing
 from io import TextIOWrapper
+from itertools import islice
 from os import remove
 from pathlib import Path
 import tarfile
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 import sqlite3
 from result_parser import QueryInstance, QueryResult, Result, Status
 import xml.etree.ElementTree as ET
 import re
 import json
 import typing
+import csv
 
 parser = ArgumentParser(prog="Generates a database with the data from many_results")
 parser.add_argument("timeout", help="Sets a virtual timeout cut", default=100000, type=float)
@@ -24,15 +26,15 @@ expected_answers = json.load(open("expected_answers.json", "r"))
 def create_tables(con: sqlite3.Connection):
     
     con.execute("""
-    CREATE TABLE experiment (id INTEGER PRIMARY KEY, name, search_strategy);
+    CREATE TABLE IF NOT EXISTS experiment (id INTEGER PRIMARY KEY, name, search_strategy);
     """)
 
     con.execute("""
-    CREATE TABLE query_instance (id INTEGER PRIMARY KEY, model_name, query_name, query_index, query_type, expected_answer)
+    CREATE TABLE IF NOT EXISTS query_instance (id INTEGER PRIMARY KEY, model_name, query_name, query_index, query_type, expected_answer)
     """)
 
     con.execute("""
-    CREATE TABLE query_result (
+    CREATE TABLE IF NOT EXISTS query_result (
         id INTEGER PRIMARY KEY,
         experiment_id,
         query_instance_id,
@@ -49,7 +51,7 @@ def create_tables(con: sqlite3.Connection):
     """)
 
     con.execute("""
-    CREATE TABLE extended_result (
+    CREATE TABLE IF NOT EXISTS extended_result (
         id INTEGER PRIMARY KEY,
         query_result_id,
         stdout,
@@ -58,34 +60,86 @@ def create_tables(con: sqlite3.Connection):
     );
     """)
 
-def parse_query_and_type(property: ET.ElementTree) -> Tuple[str, int, str]:
+def parse_query_and_type(property: ET.ElementTree) -> Tuple[str, int, Optional[str]]:
     name = property.find("./{http://mcc.lip6.fr/}id").text
-    m = re.match(r".+\-([^-]+)\-[0-9]+\-([0-9]+)$", name)
+    m = re.match(r".+\-([^-0-9]+)\-([0-9]+\-)?([0-9]+)$", name)
     query_name = m.group(1)
-    index = int(m.group(2)) + 1
+    index = int(m.group(3)) + 1
 
-    if property.find("./{http://mcc.lip6.fr/}formula/{http://mcc.lip6.fr/}all-paths/{http://mcc.lip6.fr/}globally") is not None:
+    if property.find("./{http://mcc.lip6.fr/}formula/{http://mcc.lip6.fr/}all-paths") is not None:
         return query_name, index, "ag"
-    elif property.find("./{http://mcc.lip6.fr/}formula/{http://mcc.lip6.fr/}exists-path/{http://mcc.lip6.fr/}finally") is not None:
+    elif property.find("./{http://mcc.lip6.fr/}formula/{http://mcc.lip6.fr/}exists-path") is not None:
         return query_name, index, "ef"
+    elif property.find("./{http://mcc.lip6.fr/}formula/{http://mcc.lip6.fr/}negation/{http://mcc.lip6.fr/}all-paths") is not None:
+        return query_name, index, "ef"
+    elif property.find("./{http://mcc.lip6.fr/}formula/{http://mcc.lip6.fr/}negation/{http://mcc.lip6.fr/}exists-path") is not None:
+        return query_name, index, "ag"
     else:
-        raise Exception("error")
+        return query_name, index, None
 
+class ConsensusAnswer:
+    def __init__(self, model_name: str, category: str, index: int, consensus: Optional[QueryResult]):
+        self.model_name = model_name
+        self.category = category
+        self.index = index + 1
+        self.consensus = consensus
+
+def read_consensus_answers(answerPath: str) -> Iterator[ConsensusAnswer]:
+    with open(answerPath, newline='') as csvFile:
+        csvReader = csv.reader(csvFile)
+        for row in csvReader:
+            yield ConsensusAnswer(row[0], row[1], int(row[2]),
+                QueryResult.Satisfied if row[3] == "T"
+                    else (QueryResult.Unsatisfied if row[3] == "F" else None))
+
+NON_DYNAMIC_QUERY_CATEGORIES = ["ReachabilityDeadlock", "OneSafe", "Liveness", "StableMarking", "QuasiLiveness"]
+DYNAMIC_QUERY_CATEGORIES = ["ReachabilityCardinality", "ReachabilityFireability", "LTLCardinality", "LTLFireability", "CTLCardinality", "CTLFireability"]
 def create_query_instances(con: sqlite3.Connection, path: str):
+    known_models: set[str] = set()
+    consensus_answers = read_consensus_answers('all_answers.csv')
+    for consensus_answer in filter(lambda x : 'COL' in x.model_name, consensus_answers):
+        known_models.add(consensus_answer.model_name)
+        expected_answer = None
+        if consensus_answer.consensus != None:
+            expected_answer = consensus_answer.consensus.name
+        if consensus_answer.category == "ReachabilityDeadlock":
+            con.execute("""
+                    INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
+                """, (consensus_answer.model_name, consensus_answer.category, consensus_answer.index, "ef", expected_answer))
+            continue
+        if consensus_answer.category in NON_DYNAMIC_QUERY_CATEGORIES:
+            con.execute("""
+                    INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
+                """, (consensus_answer.model_name, consensus_answer.category, consensus_answer.index, None, expected_answer))
+            continue
+        parsed = ET.parse(str(Path(path) / consensus_answer.model_name / (consensus_answer.category + ".xml")))
+        #fix
+        query_type = None
+        for queryElement in islice(parsed.iterfind(".//{http://mcc.lip6.fr/}property"), consensus_answer.index - 1, consensus_answer.index):
+            _, _, query_type = parse_query_and_type(queryElement)
+        
+        con.execute("""
+                INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
+            """, (consensus_answer.model_name, consensus_answer.category, consensus_answer.index, query_type, expected_answer))
     for modelDirectoryPath in Path(path).glob("*"):
-        for queryFile in [modelDirectoryPath / "ReachabilityCardinality.xml", modelDirectoryPath / "ReachabilityFireability.xml"]:
-            parsed = ET.parse(str(queryFile))
-            for queryElement in parsed.iterfind(".//{http://mcc.lip6.fr/}property"):
-                query_name, index, query_type = parse_query_and_type(queryElement)
-                expected_answer = None
-                if (modelDirectoryPath.name in expected_answers):
-                    c = expected_answers[modelDirectoryPath.name][query_name][index - 1]
-                    expected_answer = (QueryResult.Satisfied.name if c == 'T' else (QueryResult.Unsatisfied.name if c == 'F' else None))
-                else:
-                    print(f"no expected value for {modelDirectoryPath.name}")
+        model_name = modelDirectoryPath.name 
+        if (modelDirectoryPath.name not in known_models):
+            for queryCategory in DYNAMIC_QUERY_CATEGORIES:
+                parsed = ET.parse(str(modelDirectoryPath / (queryCategory + ".xml")))
+                for queryElement in parsed.iterfind(".//{http://mcc.lip6.fr/}property"):
+                    query_name, index, query_type = parse_query_and_type(queryElement)
+                    con.execute("""
+                        INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
+                    """, (model_name, query_name, index, query_type, None))
+            for queryCategory in NON_DYNAMIC_QUERY_CATEGORIES:
+                if queryCategory == "ReachabilityDeadlock":
+                    con.execute("""
+                        INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
+                    """, (model_name, query_name, index, "ef", None))
+                    continue
                 con.execute("""
                     INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
-                """, (modelDirectoryPath.name, query_name, index, query_type, expected_answer))
+                """, (model_name, query_name, index, None, None))
 
 class StrategyResults:
     def __init__(self, name: str, strategy: str, results: dict[str, Result]):
@@ -138,30 +192,42 @@ def getQueryInstance(con: sqlite3.Connection, queryInstance: QueryInstance) -> i
 def insertResults(con: sqlite3.Connection, resultsDict: Dict[str, StrategyResults]):
     for strategy in resultsDict.values():
         experimentId: Optional[int] = None
+        exists_cur = con.execute("SELECT * FROM experiment WHERE name = ? AND search_strategy = ?", (strategy.name, strategy.strategy))
+        if (len(exists_cur.fetchall()) > 0):
+            continue
+        exists_cur.close()
         cur = con.cursor()
         res = cur.execute("INSERT INTO experiment (name, search_strategy) VALUES (?, ?) RETURNING id", (strategy.name, strategy.strategy))
         experimentId = res.fetchone()[0]
         print(f"adding {strategy.name}-{strategy.strategy}")
         for result in strategy.results.values():
             processResult(result)
-            queryInstanceId = getQueryInstance(con, result.query_instance)
+            try:
+                queryInstanceId = getQueryInstance(con, result.query_instance)
+            except:
+                print(result.query_instance.model_name, result.query_instance.query_index, result.query_instance.query_name)
+                raise
             res = cur.execute("INSERT INTO query_result (experiment_id, query_instance_id, time, status, result, max_memory, states, color_reduction_time, verification_time) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
                 (experimentId, queryInstanceId, result.time, result.status.name, result.result.name if result.result != None else None, result.maxMemory, result.states, result.colorReductionTime, result.verificationTime))
             cur.execute("INSERT INTO extended_result (query_result_id, stdout, stderr) VALUES (?, ?, ?)",
                 (res.fetchone()[0], result.fullOut, result.fullErr)
             )
+        cur.close()
+        con.commit()
 
 def generate_data(con: sqlite3.Connection, resultsFilePath: str):
     create_tables(con)
-    create_query_instances(con, "/usr/local/share/mcc/")
+    cur = con.execute("SELECT COUNT(*) FROM query_instance")
+    if (cur.fetchone()[0] == 0):
+        print("Creating query instances")
+        create_query_instances(con, "/usr/local/share/mcc/")
+        con.commit()
+    print("Processing results")
     results = process_results(resultsFilePath)
+    print("Inserting results")
     insertResults(con, results)
 
 if __name__ == '__main__':
-    try:
-        remove("data.db")
-    except FileNotFoundError:
-        pass
     db = sqlite3.connect("data.db")
     generate_data(db, "many_results")
     db.commit()

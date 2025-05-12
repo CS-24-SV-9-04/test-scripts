@@ -80,6 +80,8 @@ class MCCResultParser(HTMLParser):
             self.currentVariation = data
             self.state = ParserState.FIND_RESULT_STRING
         elif self.state == ParserState.READ_RESULT_STRING:
+            if (data == "?" and (self.category.endswith("Cardinality") or self.category.endswith("Fireability"))):
+                data = "?" * 16
             self.addAnswers(self.category, self.currentModel, self.currentVariation, data)
             self.state = ParserState.READ_RESULT
 

@@ -13,8 +13,7 @@ run_file_name="run-$1-$hash.sh"
 bin_file_name="verifypn-linux64-$1-$hash"
 
 echo "#!/bin/bash" > "run.sh"
-echo "cp" "staging/$bin_file_name" "verifypn-linux64" "||" "exit" >> "run.sh"
-echo "./create_jobs.py -o \"$1.$hash\" -m /nfs/petrinet/mcc/2024/colour/" "${@:2}" >> "run.sh"
+echo "./create_jobs.py -v ./staging/$bin_file_name -o \"$1.$hash\" -m /nfs/petrinet/mcc/2024/colour/" "${@:2}" >> "run.sh"
 chmod u+x "run.sh"
 
 echo "Uploading files"

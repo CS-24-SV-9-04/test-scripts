@@ -18,6 +18,8 @@ parser.add_argument('-o', '--out-name', help="Name of the folder where output sh
 parser.add_argument('-w', '--wait-time', help="The wait time between starting jobs", default=0.2, type=float)
 parser.add_argument('-b', '--use-baseline', help="Disable the colored engine", action='store_true')
 parser.add_argument('--base-output-dir', help='Base path for output', default="/nfs/home/student.aau.dk/jhajri20/slurm-output/")
+parser.add_argument('-d', '--deadlock-query', help='path to the global deadlock query', default='/nfs/home/student.aau.dk/jhajri20/deadlockQuery.xml')
+parser.add_argument('-v', '--verifypn-path', help='path to the verifypn binary', default='/nfs/home/student.aau.dk/jhajri20/verifypn-linux64')
 only_args = sys.argv[1:]
 EXTRA_ARGS = []
 try:
@@ -39,13 +41,13 @@ USE_BASELINE = args.use_baseline
 BASE_OUTPUT_DIR = args.base_output_dir
 slurm_output_path = Path(BASE_OUTPUT_DIR)
 OUTPUT_PATH = slurm_output_path / OUT_NAME
+DEADLOCK_QUERY = args.deadlock_query
+VERIFYPN_PATH = args.verifypn_path
 
 def validate_scg(scg: str):
     if scg == "fixed":
         return
     elif scg == "even":
-        return
-    elif scg == "random":
         return
     elif scg is None:
         return
@@ -90,9 +92,9 @@ validate_strategy(STRATEGY)
 validate_out_name(slurm_output_path, OUTPUT_PATH)
 
 class QueryFile:
-    def __init__(self, queryPath):
+    def __init__(self, queryPath, queryCount):
         self.queryPath = queryPath
-        self.queryCount = 16
+        self.queryCount = queryCount
     def name(self):
         return self.queryPath.name
 
@@ -111,7 +113,8 @@ models: List[Model] = []
 print("finding models")
 for modelRoot in Path(MODELS_PATH).iterdir():
     modelPnml = modelRoot / "model.pnml"
-    queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml'), QueryFile(modelRoot / "ReachabilityFireability.xml")]
+    #queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml', 16), QueryFile(modelRoot / "ReachabilityFireability.xml", 16), QueryFile(Path(DEADLOCK_QUERY), 1)]
+    queryFiles = [QueryFile(modelRoot / 'LTLCardinality.xml', 16), QueryFile(modelRoot / "LTLFireability.xml", 16)]
     models.append(Model(modelRoot, modelPnml, queryFiles))
 
 print(f"Found {models.__len__()} models")
@@ -141,6 +144,7 @@ def scheduleJob(job: ModelCheckingJob):
     my_env["MODEL_FILE_PATH"] = os.path.abspath(job.model.modelPath)
     my_env["QUERY_FILE_PATH"] = os.path.abspath(job.queryFile.queryPath)
     my_env["QUERY_COUNT"] = str(job.queryFile.queryCount)
+    my_env["VERIFYPN_PATH"] = os.path.abspath(VERIFYPN_PATH)
     verifypn_options = []
     if not USE_BASELINE:
         verifypn_options.append("-C")
@@ -176,6 +180,7 @@ else:
 
 print(f"requires an estimated {totalQueries} minutes of cpu time")
 print("Scheduling jobs, press enter to start")
+print(f"Using binary at {os.path.abspath(VERIFYPN_PATH)}")
 input()
 for modelCheckingJob in modelCheckingJobs:
     time.sleep(WAIT_TIME)

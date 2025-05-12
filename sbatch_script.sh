@@ -14,7 +14,7 @@ do
     line="\n###### RUNNING $SLURM_JOB_NAME X $QUERY_INDEX ######"
     echo -e "$line"
     echo -e "$line" >&2
-    /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 60 /nfs/home/student.aau.dk/jhajri20/verifypn-linux64 -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $VERIFYPN_OPTIONS
+    /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 60 $VERIFYPN_PATH -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $VERIFYPN_OPTIONS
     EXECUTION_RESULT=$?
     if [ $EXECUTION_RESULT = 124 ]; then
         echo "TIMEOUT"
