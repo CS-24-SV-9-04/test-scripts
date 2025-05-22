@@ -111,6 +111,7 @@ def createEnv(model: Model):
     my_env["VERIFYPN_PATH"] = VERIFYPN_PATH
     my_env["SEARCH_STRATEGY"] = STRATEGY or "default"
     my_env["SUCCESSOR_GENERATOR"] = COLORED_SUCCESSOR_GENERATOR or "default"
+    my_env["PER_QUERY_TIMEOUT"] = str(TIMEOUT * 60)
     reachabilityOptions = []
     reachabilityOptions.append("-n")
     reachabilityOptions.append("1")

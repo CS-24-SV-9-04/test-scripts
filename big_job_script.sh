@@ -29,9 +29,9 @@ do
         echo -e $line
         echo -e "$line" >&2
         if [ $QUERY_IS_LTL = '1' ]; then
-            /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 60 $VERIFYPN_PATH -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $LTL_OPTIONS
+            /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout $PER_QUERY_TIMEOUT $VERIFYPN_PATH -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $LTL_OPTIONS
         else
-            /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout 60 $VERIFYPN_PATH -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $REACHABILITY_OPTIONS
+            /usr/bin/time --format="TOTAL_TIME: %es\nMAX_MEMORY: %MkB" timeout $PER_QUERY_TIMEOUT $VERIFYPN_PATH -x $QUERY_INDEX $MODEL_FILE_PATH $QUERY_FILE_PATH $REACHABILITY_OPTIONS
         fi
         EXECUTION_RESULT=$?
         if [ $EXECUTION_RESULT = 124 ]; then

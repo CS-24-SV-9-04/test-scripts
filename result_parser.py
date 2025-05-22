@@ -32,8 +32,17 @@ class QueryInstance:
     def get_key(self):
         return f"{self.model_name}:{self.query_name}:{self.query_index}"
 
+class OutputMatch:
+    def __init__(self, name: str, category: str, strategy: str, query_index: int, outResult: str, errResult: str):
+        self.name = name
+        self.category = category
+        self.strategy = strategy
+        self.query_index = query_index
+        self.outResult = outResult
+        self.errResult = errResult
+
 pattern = r"#{6}\s+RUNNING\s+([^_]+)_([^\.]+)\.xml_([A-Za-z]+)\s+X\s+([0-9]+)\s+#{6}([^#]+)"
-large_pattern= r"#{6}\s+RUNNING\s+([^\s]+)\s+X\s+([^\s]+)\s+X\s+([0-9]+)\s+#{6}([^#]+)"
+large_pattern= r"#{6}\s+RUNNING\s+([^\s]+)\s+X\s+([^\s]+)\s+X\s+([^\s]+)\s+X\s+([0-9]+)\s+#{6}([^#]+)"
 class Result:
     def __init__(self, query_instance: QueryInstance, time: Optional[float], status: Status, result: Optional[QueryResult], maxMemory: Optional[float], states: Optional[int], strategy: str, colorReductionTime: Optional[float], verificationTime: Optional[float], fullOut: str, fullErr: str):
         self.query_instance = query_instance
@@ -50,23 +59,42 @@ class Result:
 
     @staticmethod
     def fromOutErr(out: str, err: str, is_large_job: bool) -> Iterable[Self]:
-        if not is_large_job:
-            outMatches = re.finditer(pattern, out)
-            errMatches = re.finditer(pattern, err)
-            return map(lambda t: Result.__fromOutErrSingle(*t), zip(outMatches, errMatches))
+        if is_large_job:
+            matches = zip(re.finditer(large_pattern, out), re.finditer(large_pattern, err))
+            
+            return map(
+                lambda t: Result.__fromOutErrSingle(*t),
+                map(lambda outMatch, errMatch: OutputMatch(
+                    outMatch.group(1),
+                    outMatch.group(3),
+                    outMatch.group(2),
+                    int(outMatch.group(4)),
+                    outMatch.group(5),
+                    errMatch.group(5)
+                ), matches)
+            )
         else:
-            outMatches = re.finditer(large_pattern, out)
-            errMatches = re.finditer(large_pattern, err)
-            return map(lambda t: Result.__fromOutErrSingle(*t), zip(outMatches, errMatches))
+            matches = zip(re.finditer(pattern, out), re.finditer(pattern, err))
+            return map(
+                lambda t: Result.__fromOutErrSingle(*t),
+                map(lambda outMatch, errMatch: OutputMatch(
+                    outMatch.group(1),
+                    outMatch.group(2),
+                    outMatch.group(3),
+                    int(outMatch.group(4)),
+                    outMatch.group(5),
+                    errMatch.group(5)
+                ), matches)
+            )
 
     @staticmethod
-    def __fromOutErrSingle(outMatch: re.Match, errMatch: re.Match) -> Self:
-        name = outMatch.group(1)
-        category = outMatch.group(2)
-        strategy = outMatch.group(3)
-        query_index = outMatch.group(4)
-        outResult = outMatch.group(5)
-        errResult = errMatch.group(5)
+    def __fromOutErrSingle(outputMatch: OutputMatch) -> Self:
+        name = outputMatch.name
+        category = outputMatch.category
+        strategy = outputMatch.strategy
+        query_index = outputMatch.query_index
+        outResult = outputMatch.outResult
+        errResult = outputMatch.errResult
         timeMatch = re.search(r"TOTAL_TIME: ([0-9]+(\.[0-9]+)?)s", errResult)
         memoryMatch = re.search("MAX_MEMORY: ([0-9]+)kB", errResult)
         passedListMatch = re.search(r"passed states: ([0-9]+)", outResult)

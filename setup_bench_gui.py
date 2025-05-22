@@ -40,6 +40,7 @@ strategy = StringVar(value="RDFS")
 successor_generator = StringVar(value="even")
 staging_folder_info: Optional[StagingFolderInfo] = None
 query_simplification_timeout = None
+query_timeout = 1
 
 current_row = 0
 
@@ -123,13 +124,15 @@ def create_bench(upload: bool, bench_name: str, staging_folder: str, extra_optio
     with open(script_file_name, "w") as f:
         f.write("#!/bin/sh\n")
         command = [
-            './create_big_jobs.py ',
+            './create_big_jobs.py',
             '-v',
             f'./staging/{bin_file_name}',
             '-o',
             bench_name,
             '-S',
             strategy,
+            '--timeout',
+            str(query_timeout),
             '-c',
             ','.join(categories),
             '--colored-successor-generator',
@@ -260,6 +263,27 @@ def add_query_simplification_control(master: Misc):
     timeout_input.grid(row=current_row, column=1, columnspan=2, sticky='W')
     current_row += 1
 
+def add_timeout_control(master: Misc):
+    global current_row
+    global query_timeout
+    Label(master, text="Per query timeout (minutes): ").grid(row=current_row, column=0)
+    raw_input = StringVar(master, value=str(query_timeout))
+    def input_update(a,b,c):
+        global query_timeout
+        text = raw_input.get()
+        timeout_input['fg'] = 'black'
+        try:
+            parsed = int(text)
+            query_timeout = parsed
+        except:
+            timeout_input['fg'] = 'red'
+            query_timeout = 1
+    
+    raw_input.trace_add(['write'], input_update)
+    timeout_input = Entry(master, textvariable=raw_input)
+    timeout_input.grid(row=current_row, column=1, columnspan=2, sticky='W')
+    current_row += 1
+
 def add_bench_name_control(master: Misc):
     global current_row
     Label(master, text='Bench name:').grid(row=current_row, sticky='W')
@@ -297,6 +321,7 @@ def createUi(master: Tk):
     add_search_strategy_control(master)
     add_successor_generator_control(master)
     add_query_simplification_control(master)
+    add_timeout_control(master)
     add_bench_name_control(master)
     add_extra_options_control(master)
     add_create_control(master)
