@@ -20,9 +20,6 @@ parser.add_argument("timeout", help="Sets a virtual timeout cut", default=100000
 parsed = parser.parse_args()
 TIMEOUT = parsed.timeout
 
-
-expected_answers = json.load(open("expected_answers.json", "r"))
-
 def create_tables(con: sqlite3.Connection):
     
     con.execute("""
@@ -155,11 +152,7 @@ def process_results(resultFilesPath: str) -> Dict[str, StrategyResults]:
     resultFilePaths = list(Path(resultFilesPath).glob(f"*.tar"))
     for resultFilePath in resultFilePaths:
         with tarfile.open(str(resultFilePath), "r") as resultTar:
-            is_large_job = True
-            try:
-                resultTar.getmember("large")
-            except KeyError:
-                is_large_job = False
+            is_large_job = any(map(lambda x: x.endswith('large'), resultTar.getnames()))
             for memberInfo in resultTar.getmembers():
                 if (memberInfo.path.endswith(".out")):
                     try:

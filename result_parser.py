@@ -36,7 +36,7 @@ class OutputMatch:
     def __init__(self, name: str, category: str, strategy: str, query_index: int, outResult: str, errResult: str):
         self.name = name
         self.category = category
-        self.strategy = strategy
+        self.strategy = strategy.replace("-", "_")
         self.query_index = query_index
         self.outResult = outResult
         self.errResult = errResult
@@ -63,27 +63,27 @@ class Result:
             matches = zip(re.finditer(large_pattern, out), re.finditer(large_pattern, err))
             
             return map(
-                lambda t: Result.__fromOutErrSingle(*t),
-                map(lambda outMatch, errMatch: OutputMatch(
-                    outMatch.group(1),
-                    outMatch.group(3),
-                    outMatch.group(2),
-                    int(outMatch.group(4)),
-                    outMatch.group(5),
-                    errMatch.group(5)
+                lambda t: Result.__fromOutErrSingle(t),
+                map(lambda t: OutputMatch(
+                    t[0].group(1),
+                    t[0].group(3),
+                    t[0].group(2),
+                    int(t[0].group(4)),
+                    t[0].group(5),
+                    t[1].group(5)
                 ), matches)
             )
         else:
             matches = zip(re.finditer(pattern, out), re.finditer(pattern, err))
             return map(
-                lambda t: Result.__fromOutErrSingle(*t),
-                map(lambda outMatch, errMatch: OutputMatch(
-                    outMatch.group(1),
-                    outMatch.group(2),
-                    outMatch.group(3),
-                    int(outMatch.group(4)),
-                    outMatch.group(5),
-                    errMatch.group(5)
+                lambda t: Result.__fromOutErrSingle(t),
+                map(lambda t: OutputMatch(
+                    t[0].group(1),
+                    t[0].group(2),
+                    t[0].group(3),
+                    int(t[0].group(4)),
+                    t[0].group(5),
+                    t[1].group(5)
                 ), matches)
             )
 
@@ -134,6 +134,6 @@ class Result:
         else:
             status = Status.Error
         
-        return Result(QueryInstance(name, category, query_index), time, status, result, maxMemory, exploredCount, strategy, colorReductionTime, verificationTime, outMatch.group(5), errMatch.group(5))
+        return Result(QueryInstance(name, category, query_index), time, status, result, maxMemory, exploredCount, strategy, colorReductionTime, verificationTime, outputMatch.outResult, outputMatch.errResult)
         
 
