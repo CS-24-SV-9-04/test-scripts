@@ -132,7 +132,7 @@ def createEnv(model: Model):
 def scheduleJob(model: Model):
     env = createEnv(model)
     args = [
-        "./fake_sbatch.py",
+        "sbatch",
         "--job-name",
         f'{model.modelRoot.name}_{OUT_NAME}',
         "--output",
