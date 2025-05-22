@@ -130,16 +130,16 @@ def create_query_instances(con: sqlite3.Connection, path: str):
                     query_name, index, query_type = parse_query_and_type(queryElement)
                     con.execute("""
                         INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
-                    """, (model_name, query_name, index, query_type, None))
+                    """, (model_name, queryCategory, index, query_type, None))
             for queryCategory in NON_DYNAMIC_QUERY_CATEGORIES:
                 if queryCategory == "ReachabilityDeadlock":
                     con.execute("""
                         INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
-                    """, (model_name, query_name, index, "ef", None))
+                    """, (model_name, queryCategory, 1, "ef", None))
                     continue
                 con.execute("""
                     INSERT INTO query_instance (model_name, query_name, query_index, query_type, expected_answer) VALUES (?, ?, ?, ?, ?)
-                """, (model_name, query_name, index, None, None))
+                """, (model_name, queryCategory, 1, None, None))
 
 class StrategyResults:
     def __init__(self, name: str, strategy: str, results: dict[str, Result]):
@@ -155,6 +155,11 @@ def process_results(resultFilesPath: str) -> Dict[str, StrategyResults]:
     resultFilePaths = list(Path(resultFilesPath).glob(f"*.tar"))
     for resultFilePath in resultFilePaths:
         with tarfile.open(str(resultFilePath), "r") as resultTar:
+            is_large_job = True
+            try:
+                resultTar.getmember("large")
+            except KeyError:
+                is_large_job = False
             for memberInfo in resultTar.getmembers():
                 if (memberInfo.path.endswith(".out")):
                     try:
@@ -163,7 +168,7 @@ def process_results(resultFilesPath: str) -> Dict[str, StrategyResults]:
                             with resultTar.extractfile(errInfo) as errFile:
                                 outContent = outFile.read().decode()
                                 errContent = errFile.read().decode()
-                                results = Result.fromOutErr(outContent, errContent)
+                                results = Result.fromOutErr(outContent, errContent, is_large_job)
                                 for result in results:
                                     name = createName(resultFilePath, result.strategy)
                                     if name not in resultDict:

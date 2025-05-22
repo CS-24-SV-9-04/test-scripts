@@ -18,7 +18,7 @@ parser.add_argument('-o', '--out-name', help="Name of the folder where output sh
 parser.add_argument('-w', '--wait-time', help="The wait time between starting jobs", default=0.2, type=float)
 parser.add_argument('-b', '--use-baseline', help="Disable the colored engine", action='store_true')
 parser.add_argument('--base-output-dir', help='Base path for output', default="/nfs/home/student.aau.dk/jhajri20/slurm-output/")
-parser.add_argument('-d', '--deadlock-query', help='path to the global deadlock query', default='/nfs/home/student.aau.dk/jhajri20/deadlockQuery.xml')
+parser.add_argument('-d', '--deadlock-query', help='path to the global deadlock query', default='/nfs/home/student.aau.dk/jhajri20/ReachabilityDeadlock.xml')
 parser.add_argument('-v', '--verifypn-path', help='path to the verifypn binary', default='/nfs/home/student.aau.dk/jhajri20/verifypn-linux64')
 only_args = sys.argv[1:]
 EXTRA_ARGS = []
@@ -113,8 +113,8 @@ models: List[Model] = []
 print("finding models")
 for modelRoot in Path(MODELS_PATH).iterdir():
     modelPnml = modelRoot / "model.pnml"
-    #queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml', 16), QueryFile(modelRoot / "ReachabilityFireability.xml", 16), QueryFile(Path(DEADLOCK_QUERY), 1)]
-    queryFiles = [QueryFile(modelRoot / 'LTLCardinality.xml', 16), QueryFile(modelRoot / "LTLFireability.xml", 16)]
+    queryFiles = [QueryFile(modelRoot / 'ReachabilityCardinality.xml', 16), QueryFile(modelRoot / "ReachabilityFireability.xml", 16), QueryFile(Path(DEADLOCK_QUERY), 1)]
+    #queryFiles = [QueryFile(modelRoot / 'LTLCardinality.xml', 16), QueryFile(modelRoot / "LTLFireability.xml", 16)]
     models.append(Model(modelRoot, modelPnml, queryFiles))
 
 print(f"Found {models.__len__()} models")

@@ -17,3 +17,6 @@ readme.md
 main.py
 .venv
 all_answers.csv
+fake_base_dir/
+fake_sbatch_jobs/
+.setup_bench_gui.rc

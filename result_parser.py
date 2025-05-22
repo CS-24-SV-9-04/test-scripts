@@ -33,7 +33,7 @@ class QueryInstance:
         return f"{self.model_name}:{self.query_name}:{self.query_index}"
 
 pattern = r"#{6}\s+RUNNING\s+([^_]+)_([^\.]+)\.xml_([A-Za-z]+)\s+X\s+([0-9]+)\s+#{6}([^#]+)"
-
+large_pattern= r"#{6}\s+RUNNING\s+([^\s]+)\s+X\s+([^\s]+)\s+X\s+([0-9]+)\s+#{6}([^#]+)"
 class Result:
     def __init__(self, query_instance: QueryInstance, time: Optional[float], status: Status, result: Optional[QueryResult], maxMemory: Optional[float], states: Optional[int], strategy: str, colorReductionTime: Optional[float], verificationTime: Optional[float], fullOut: str, fullErr: str):
         self.query_instance = query_instance
@@ -49,10 +49,15 @@ class Result:
         self.verificationTime = verificationTime
 
     @staticmethod
-    def fromOutErr(out: str, err: str) -> Iterable[Self]:
-        outMatches = re.finditer(pattern, out)
-        errMatches = re.finditer(pattern, err)
-        return map(lambda t: Result.__fromOutErrSingle(*t), zip(outMatches, errMatches))
+    def fromOutErr(out: str, err: str, is_large_job: bool) -> Iterable[Self]:
+        if not is_large_job:
+            outMatches = re.finditer(pattern, out)
+            errMatches = re.finditer(pattern, err)
+            return map(lambda t: Result.__fromOutErrSingle(*t), zip(outMatches, errMatches))
+        else:
+            outMatches = re.finditer(large_pattern, out)
+            errMatches = re.finditer(large_pattern, err)
+            return map(lambda t: Result.__fromOutErrSingle(*t), zip(outMatches, errMatches))
 
     @staticmethod
     def __fromOutErrSingle(outMatch: re.Match, errMatch: re.Match) -> Self:
