@@ -13,16 +13,16 @@ def getInhibitor(match, content, chance):
     if re.search(rf'<place id=\"{source}\">', content) == None:
         return expr
     return rf'''<arc id="{source}_to_{target}" source="{source}" target="{target}" type="inhibitor">
-            <structure>
-                <numberof>
-                    <subterm>
-                        <numberconstant value="{cardinality}">
-                            <positive/>
-                        </numberconstant>
-                    </subterm>
-                </numberof>
-            </structure>
-        </arc>'''
+                <structure>
+                    <numberof>
+                        <subterm>
+                            <numberconstant value="{cardinality}">
+                                <positive/>
+                            </numberconstant>
+                        </subterm>
+                    </numberof>
+                </structure>
+            </arc>'''
 
 def addInhibitors(filePath, newFilePath, chance):
     file = open(filePath, 'r')
@@ -30,7 +30,7 @@ def addInhibitors(filePath, newFilePath, chance):
     file.close()
     (content, nArcs) = re.subn(r'(?P<arcExpr><arc.*?source=\"(?P<source>.*?)\"\s*?target=\"(?P<target>.*?)\"(?:.|\n)*?(?P<cardinality>\d*)\'(?:.|\n)*?</arc>)', lambda x: getInhibitor(x, content, chance), content)
     file = open(newFilePath, 'w')
-    file.write(newFilePath)
+    file.write(content)
     file.close()
 
 def main():
